@@ -1,7 +1,8 @@
 ---
 http_port: 9501
 rtimer: 60
+logfile: anticron.log
 tasks:
   - name: Test_task
     command: ls -la
-    time_at: "20:16"
+    time_at: "20:42"

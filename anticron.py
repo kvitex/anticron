@@ -21,12 +21,13 @@ class Stask(object):
         self.last_task_duration = 0
         self.last_task_start_timestamp = 0
         self.process = None
+        self.printlog = kwargs.get('printlog', print)
 
     def run(self):
         self.poll()
-        print('{} Starting task {}:'.format(datetime.now(), self.name))
+        self.printlog('{} Starting task {}:{}'.format(datetime.now(), self.name, self.command))
         if self.process is None: 
-            self.process = subprocess.Popen(self.command, shell=True, stdout=subprocess.PIPE)
+            self.process = subprocess.Popen(self.command, shell=True)
             self.task_status = 1
             self.last_task_start_timestamp = time.time()
         else:
@@ -35,7 +36,13 @@ class Stask(object):
                 self.task_status = 2
                 return
             else:
-                self.process = subprocess.Popen(self.command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                self.process = subprocess.Popen(
+                    self.command, 
+                    shell=True, 
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    universal_newlines = True
+                    )
                 self.task_status = 1
                 self.last_task_start_timestamp = time.time()
 
@@ -47,14 +54,6 @@ class Stask(object):
             if proc_code is None:
                 return None
             else:
-                std_out = ''
-                std_err = ''
-                if self.process.stdout is not None:
-                    std_out = self.process.stdout.read().decode('utf-8').replace('\\n','\n')
-                if self.process.stderr is not None:
-                    std_err = self.process.stderr.read().decode('utf-8').replace('\\n','\n')
-                any(map(lambda x: print('{}: {}'. format(self.name, x)), std_err.split('\n')))
-                any(map(lambda x: print('{}: {}'. format(self.name, x)), std_out.split('\n')))
                 if proc_code == 0:
                     self.last_task_result = 1
                     self.last_success_timestamp = time.time()
@@ -64,8 +63,25 @@ class Stask(object):
                 self.last_task_duration = time.time() - self.last_task_start_timestamp
                 self.task_status = 0
                 self.process = None
-                print('{} Task stopped {}: with exit code: {}'.format(datetime.now(), self.name, proc_code))
+                self.printlog('{} Task stopped {}: with exit code: {}'.format(datetime.now(), self.name, proc_code))
                 return proc_code
+
+class WriteLog(object):
+    def __init__(self,filename, init_string=''):
+        self.logfile_name = filename
+        self.write_string(init_string)
+
+    def write_string(self, log_string):
+        if self.logfile_name is None:
+            print(log_string)
+            return
+        try:
+            with open(self.logfile_name, 'a') as logfile:
+                logfile.write(log_string + '\n')
+        except Exception as Error:
+            print(Error)
+            print('Error while writing log to {}'.format(self.logfile_name))
+        return    
 
 
 if __name__ == "__main__":
@@ -89,6 +105,7 @@ if __name__ == "__main__":
     except Exception as Error:
         print(Error)
         exit(-1)
+    log = WriteLog(cfg['logfile'], '{} Starting anticron'.format(datetime.now()))
     start_http_server(cfg['http_port'])
     ac_last_exit_code = Gauge(
         'ac_last_exit_code',
@@ -122,8 +139,7 @@ if __name__ == "__main__":
         )
     tasks_dict = {}
     for taskcfg in cfg['tasks']:
-        tasks_dict[taskcfg['name']] = Stask(**taskcfg)
-        print(tasks_dict[taskcfg['name']])
+        tasks_dict[taskcfg['name']] = Stask(**taskcfg, printlog=log.write_string)
         schedule.every().day.at(taskcfg['time_at']).do(tasks_dict[taskcfg['name']].run)
     while True:
         for name in tasks_dict:
