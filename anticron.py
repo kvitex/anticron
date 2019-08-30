@@ -106,7 +106,7 @@ if __name__ == "__main__":
         print(Error)
         exit(-1)
     log = WriteLog(cfg['logfile'], '{} Starting anticron'.format(datetime.now()))
-    start_http_server(cfg['http_port'])
+    start_http_server(int(cfg['http_port']))
     ac_last_exit_code = Gauge(
         'ac_last_exit_code',
         'Last exit code for task',
@@ -155,4 +155,4 @@ if __name__ == "__main__":
             ac_last_task_duration.labels(**ac_labels).set(tasks_dict[taskcfg['name']].last_task_duration)
             ac_last_task_start_timestamp.labels(**ac_labels).set(tasks_dict[taskcfg['name']].last_task_start_timestamp)
         schedule.run_pending()
-        time.sleep(cfg.get('rtimer', 60))
+        time.sleep(int(cfg.get('rtimer', 60)))
