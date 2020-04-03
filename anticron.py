@@ -105,7 +105,7 @@ if __name__ == "__main__":
     except Exception as Error:
         print(Error)
         exit(-1)
-    log = WriteLog(cfg['logfile'], '{} Starting anticron'.format(datetime.now()))
+    log = WriteLog(cfg.get('logfile'), '{} Starting anticron'.format(datetime.now()))
     start_http_server(int(cfg['http_port']))
     ac_last_exit_code = Gauge(
         'ac_last_exit_code',
